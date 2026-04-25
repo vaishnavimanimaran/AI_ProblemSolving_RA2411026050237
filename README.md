@@ -62,5 +62,6 @@ We model the puzzle as a CSP:
  Technologies Used
 - Python
 - itertools (for permutations)
+- website link : https://vaishnavimanimaran.github.io/AI_ProblemSolving_RA2411026050237/
 
 
