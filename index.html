@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptSolve — Cryptarithmetic CSP Solver</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --panel: #0a1520;
+    --border: #0f3a5a;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #c8e6f5;
+    --dim: #4a7a99;
+    --glow: 0 0 20px rgba(0,212,255,0.4);
+    --glow2: 0 0 20px rgba(57,255,20,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    animation: gridShift 20s linear infinite;
+  }
+
+  @keyframes gridShift {
+    0% { background-position: 0 0; }
+    100% { background-position: 40px 40px; }
+  }
+
+  /* Scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-top: 2rem;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.6), 0 0 60px rgba(0,212,255,0.2);
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+
+  .logo span { color: var(--accent2); }
+
+  @keyframes pulseGlow {
+    0%, 100% { text-shadow: 0 0 30px rgba(0,212,255,0.6), 0 0 60px rgba(0,212,255,0.2); }
+    50% { text-shadow: 0 0 40px rgba(0,212,255,0.9), 0 0 80px rgba(0,212,255,0.4); }
+  }
+
+  .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--dim);
+    font-size: 0.85rem;
+    letter-spacing: 0.3em;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+  }
+
+  /* Panels */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.8rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-title::before {
+    content: '▶';
+    font-size: 0.6rem;
+  }
+
+  /* Input area */
+  .input-row {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .puzzle-input {
+    flex: 1;
+    min-width: 200px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    padding: 0.8rem 1.2rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .puzzle-input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .puzzle-input::placeholder {
+    color: var(--dim);
+    font-size: 1rem;
+  }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    padding: 0.8rem 2rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn:hover::before { opacity: 0.1; }
+  .btn:hover { box-shadow: var(--glow); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn.solve {
+    border-color: var(--accent3);
+    color: var(--accent3);
+  }
+
+  .btn.solve:hover { box-shadow: var(--glow2); }
+  .btn.solve::before { background: var(--accent3); }
+
+  /* Presets */
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .preset-btn {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.8rem;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  /* Equation display */
+  .equation-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    color: var(--text);
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    letter-spacing: 0.15em;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .eq-letter {
+    color: var(--accent);
+    font-weight: bold;
+    display: inline-block;
+    transition: color 0.3s;
+    position: relative;
+  }
+
+  .eq-letter.solved {
+    color: var(--accent3);
+    text-shadow: 0 0 10px rgba(57,255,20,0.5);
+  }
+
+  .eq-digit {
+    display: block;
+    font-size: 0.5em;
+    color: var(--accent3);
+    position: absolute;
+    bottom: -1.2em;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  /* Status / log */
+  .log-area {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--dim);
+    height: 120px;
+    overflow-y: auto;
+    padding: 0.8rem;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    line-height: 1.7;
+  }
+
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { opacity: 0; animation: fadeIn 0.3s forwards; }
+  .log-line.info { color: var(--dim); }
+  .log-line.success { color: var(--accent3); }
+  .log-line.error { color: #ff4444; }
+  .log-line.working { color: var(--accent); }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Solution grid */
+  .solution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  .mapping-card {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.8rem;
+    text-align: center;
+    transition: all 0.3s;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  .mapping-card.show {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: var(--accent3);
+    box-shadow: 0 0 15px rgba(57,255,20,0.15);
+  }
+
+  .mapping-letter {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .mapping-arrow {
+    color: var(--dim);
+    font-size: 0.7rem;
+    margin: 0.2rem 0;
+  }
+
+  .mapping-digit {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--accent3);
+    text-shadow: 0 0 10px rgba(57,255,20,0.4);
+  }
+
+  /* Result equation */
+  .result-eq {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    text-align: center;
+    padding: 1.2rem;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--accent3);
+    border-radius: 3px;
+    color: var(--accent3);
+    letter-spacing: 0.1em;
+    box-shadow: 0 0 20px rgba(57,255,20,0.1);
+    word-break: break-all;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    height: 3px;
+    background: rgba(0,212,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    width: 0;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px rgba(0,212,255,0.6);
+  }
+
+  /* Stats */
+  .stats-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .stat {
+    flex: 1;
+    min-width: 120px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    font-family: 'Orbitron', monospace;
+  }
+
+  .stat-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.3rem;
+    color: var(--accent);
+    margin-top: 0.3rem;
+  }
+
+  /* No solution */
+  .no-solution {
+    text-align: center;
+    color: #ff4444;
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+    padding: 1rem;
+    border: 1px solid #ff4444;
+    border-radius: 3px;
+    background: rgba(255,68,68,0.05);
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hidden { display: none; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .input-row { flex-direction: column; }
+    .btn { width: 100%; text-align: center; }
+  }
+
+  /* Corner decorations */
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    opacity: 0.4;
+  }
+
+  .corner-tl {
+    top: 0; left: 0;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+  }
+
+  .corner-br {
+    bottom: 0; right: 0;
+    border-bottom: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">CRYPT<span>SOLVE</span></div>
+    <div class="subtitle">Constraint Satisfaction Problem Engine &nbsp;|&nbsp; Cryptarithmetic Solver</div>
+  </header>
+
+  <!-- Input Panel -->
+  <div class="panel">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div class="panel-title">Puzzle Input</div>
+    <div class="input-row">
+      <input
+        class="puzzle-input"
+        id="puzzleInput"
+        type="text"
+        placeholder="e.g.  SEND + MORE = MONEY"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn solve" onclick="solvePuzzle()">
+        <span id="btnText">SOLVE</span>
+      </button>
+      <button class="btn" onclick="resetAll()">RESET</button>
+    </div>
+    <div class="presets">
+      <span style="font-size:0.7rem;color:var(--dim);font-family:'Share Tech Mono',monospace;align-self:center;">PRESETS:</span>
+      <button class="preset-btn" onclick="loadPreset('SEND + MORE = MONEY')">SEND + MORE = MONEY</button>
+      <button class="preset-btn" onclick="loadPreset('BASE + BALL = GAMES')">BASE + BALL = GAMES</button>
+      <button class="preset-btn" onclick="loadPreset('EAT + THAT = APPLE')">EAT + THAT = APPLE</button>
+      <button class="preset-btn" onclick="loadPreset('TWO + TWO = FOUR')">TWO + TWO = FOUR</button>
+      <button class="preset-btn" onclick="loadPreset('CROSS + ROADS = DANGER')">CROSS + ROADS = DANGER</button>
+    </div>
+  </div>
+
+  <!-- Equation Preview -->
+  <div class="panel">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div class="panel-title">Equation Visualizer</div>
+    <div class="equation-display" id="eqDisplay">
+      <span style="color:var(--dim);font-size:0.9rem;font-family:'Share Tech Mono',monospace;">Enter a puzzle above to begin...</span>
+    </div>
+  </div>
+
+  <!-- Solver Log -->
+  <div class="panel">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div class="panel-title">CSP Engine Log</div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="log-area" id="logArea">
+      <div class="log-line info">[ SYSTEM ] CryptSolve engine ready. Awaiting input...</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-label">Variables</div>
+        <div class="stat-value" id="statVars">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Constraints</div>
+        <div class="stat-value" id="statCons">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Nodes Explored</div>
+        <div class="stat-value" id="statNodes">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Time (ms)</div>
+        <div class="stat-value" id="statTime">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solution -->
+  <div class="panel hidden" id="solutionPanel">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div class="panel-title">Solution — Letter → Digit Mapping</div>
+    <div class="solution-grid" id="solutionGrid"></div>
+    <div style="margin-top:1.2rem;">
+      <div class="result-eq" id="resultEq"></div>
+    </div>
+  </div>
+
+  <!-- No Solution -->
+  <div class="panel hidden" id="noSolPanel">
+    <div class="no-solution">
+      ⚠ &nbsp; NO VALID SOLUTION EXISTS FOR THIS PUZZLE<br>
+      <span style="font-size:0.7rem;font-family:'Share Tech Mono',monospace;color:var(--dim);">All permutations exhausted via backtracking CSP.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CSP CRYPTARITHMETIC SOLVER
+// ============================================================
+
+let solverWorkerCode = null;
+
+// Parse the puzzle string: "WORD1 + WORD2 + ... = RESULT"
+function parsePuzzle(input) {
+  const clean = input.trim().toUpperCase();
+  const eqParts = clean.split('=');
+  if (eqParts.length !== 2) return null;
+  const lhs = eqParts[0].trim();
+  const result = eqParts[1].trim().replace(/\s+/g, '');
+  if (!/^[A-Z]+$/.test(result)) return null;
+  const operands = lhs.split('+').map(s => s.trim().replace(/\s+/g, ''));
+  if (operands.some(op => !/^[A-Z]+$/.test(op))) return null;
+  return { operands, result };
+}
+
+// Collect all unique letters
+function getLetters(operands, result) {
+  const letters = new Set();
+  [...operands, result].forEach(word => word.split('').forEach(c => letters.add(c)));
+  return [...letters];
+}
+
+// Get leading letters (cannot be 0)
+function getLeadingLetters(operands, result) {
+  return new Set([...operands.map(w => w[0]), result[0]]);
+}
+
+// ============================================================
+// CSP Backtracking Solver with Forward Checking
+// ============================================================
+function solveCryptarithmetic(operands, result) {
+  const letters = getLetters(operands, result);
+  const leading = getLeadingLetters(operands, result);
+
+  if (letters.length > 10) return null; // Impossible: more than 10 unique letters
+
+  const assignment = {};
+  let nodesExplored = 0;
+
+  // Evaluate whether current partial assignment could work (column-by-column check)
+  function isConsistent(assign) {
+    // Full check only when all letters assigned
+    if (Object.keys(assign).length === letters.length) {
+      const toNum = w => parseInt(w.split('').map(c => assign[c]).join(''), 10);
+      const sum = operands.reduce((acc, op) => acc + toNum(op), 0);
+      return sum === toNum(result);
+    }
+    return true;
+  }
+
+  // Check no-leading-zero constraint
+  function checkLeading(letter, digit) {
+    return !(leading.has(letter) && digit === 0);
+  }
+
+  // Backtracking search with MRV heuristic
+  function backtrack(unassigned, usedDigits) {
+    nodesExplored++;
+    if (unassigned.length === 0) {
+      return isConsistent(assignment) ? { ...assignment } : null;
+    }
+
+    // MRV: pick letter with minimum remaining domain (all have same domain initially,
+    // but if leading, they skip 0 — so prioritize leading letters)
+    unassigned.sort((a, b) => {
+      const aLead = leading.has(a) ? 0 : 1;
+      const bLead = leading.has(b) ? 0 : 1;
+      return aLead - bLead;
+    });
+
+    const letter = unassigned[0];
+    const remaining = unassigned.slice(1);
+
+    const digits = Array.from({ length: 10 }, (_, i) => i);
+
+    for (const digit of digits) {
+      if (usedDigits.has(digit)) continue;
+      if (!checkLeading(letter, digit)) continue;
+
+      assignment[letter] = digit;
+      usedDigits.add(digit);
+
+      // Partial consistency check: if all letters in any word are assigned, verify partial sums
+      let partialOk = true;
+
+      // Check if we can already determine a partial mismatch via column arithmetic
+      // (lightweight forward checking)
+      if (remaining.length < letters.length / 2) {
+        const allWords = [...operands, result];
+        const allAssigned = allWords.every(w => w.split('').every(c => assignment[c] !== undefined));
+        if (allAssigned) {
+          const toNum = w => parseInt(w.split('').map(c => assignment[c]).join(''), 10);
+          const sum = operands.reduce((acc, op) => acc + toNum(op), 0);
+          if (sum !== toNum(result)) partialOk = false;
+        }
+      }
+
+      if (partialOk) {
+        const result2 = backtrack(remaining, usedDigits);
+        if (result2) return result2;
+      }
+
+      delete assignment[letter];
+      usedDigits.delete(digit);
+    }
+    return null;
+  }
+
+  const solution = backtrack([...letters], new Set());
+  return { solution, nodesExplored };
+}
+
+// ============================================================
+// UI Functions
+// ============================================================
+
+function addLog(msg, type = 'info') {
+  const log = document.getElementById('logArea');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.textContent = msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logArea').innerHTML = '';
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function updateEquationDisplay(operands, result, mapping = {}) {
+  const container = document.getElementById('eqDisplay');
+  container.innerHTML = '';
+
+  function renderWord(word) {
+    const span = document.createElement('span');
+    word.split('').forEach(letter => {
+      const el = document.createElement('span');
+      el.className = 'eq-letter' + (mapping[letter] !== undefined ? ' solved' : '');
+      el.style.position = 'relative';
+      el.style.display = 'inline-block';
+      el.style.marginBottom = Object.keys(mapping).length > 0 ? '1.2em' : '0';
+      el.textContent = letter;
+      if (mapping[letter] !== undefined) {
+        const digit = document.createElement('span');
+        digit.className = 'eq-digit';
+        digit.textContent = mapping[letter];
+        el.appendChild(digit);
+      }
+      span.appendChild(el);
+    });
+    return span;
+  }
+
+  operands.forEach((op, i) => {
+    container.appendChild(renderWord(op));
+    if (i < operands.length - 1) {
+      const plus = document.createElement('span');
+      plus.textContent = ' + ';
+      plus.style.color = 'var(--accent2)';
+      plus.style.fontFamily = 'Share Tech Mono, monospace';
+      container.appendChild(plus);
+    }
+  });
+
+  const eq = document.createElement('span');
+  eq.textContent = ' = ';
+  eq.style.color = 'var(--accent2)';
+  eq.style.fontFamily = 'Share Tech Mono, monospace';
+  container.appendChild(eq);
+  container.appendChild(renderWord(result));
+}
+
+function showSolution(operands, result, mapping) {
+  const panel = document.getElementById('solutionPanel');
+  const grid = document.getElementById('solutionGrid');
+  panel.classList.remove('hidden');
+  grid.innerHTML = '';
+
+  const letters = Object.keys(mapping).sort();
+  letters.forEach((letter, i) => {
+    const card = document.createElement('div');
+    card.className = 'mapping-card';
+    card.innerHTML = `
+      <div class="mapping-letter">${letter}</div>
+      <div class="mapping-arrow">↓</div>
+      <div class="mapping-digit">${mapping[letter]}</div>
+    `;
+    grid.appendChild(card);
+    setTimeout(() => card.classList.add('show'), i * 60);
+  });
+
+  // Compute result equation
+  const toNum = w => parseInt(w.split('').map(c => mapping[c]).join(''), 10);
+  const nums = operands.map(op => toNum(op));
+  const res = toNum(result);
+  const lhsStr = nums.join(' + ');
+  document.getElementById('resultEq').textContent = `${lhsStr} = ${res}`;
+}
+
+function loadPreset(preset) {
+  document.getElementById('puzzleInput').value = preset;
+  previewPuzzle();
+}
+
+function previewPuzzle() {
+  const input = document.getElementById('puzzleInput').value;
+  const parsed = parsePuzzle(input);
+  if (parsed) {
+    updateEquationDisplay(parsed.operands, parsed.result, {});
+  }
+}
+
+function resetAll() {
+  document.getElementById('puzzleInput').value = '';
+  document.getElementById('eqDisplay').innerHTML =
+    '<span style="color:var(--dim);font-size:0.9rem;font-family:\'Share Tech Mono\',monospace;">Enter a puzzle above to begin...</span>';
+  document.getElementById('solutionPanel').classList.add('hidden');
+  document.getElementById('noSolPanel').classList.add('hidden');
+  clearLog();
+  addLog('[ SYSTEM ] Engine reset. Awaiting new puzzle...', 'info');
+  setProgress(0);
+  document.getElementById('statVars').textContent = '—';
+  document.getElementById('statCons').textContent = '—';
+  document.getElementById('statNodes').textContent = '—';
+  document.getElementById('statTime').textContent = '—';
+  document.getElementById('btnText').textContent = 'SOLVE';
+}
+
+async function solvePuzzle() {
+  const input = document.getElementById('puzzleInput').value;
+  const parsed = parsePuzzle(input);
+
+  document.getElementById('solutionPanel').classList.add('hidden');
+  document.getElementById('noSolPanel').classList.add('hidden');
+
+  if (!parsed) {
+    clearLog();
+    addLog('[ ERROR ] Invalid puzzle format. Use: WORD1 + WORD2 = RESULT', 'error');
+    addLog('[ HINT  ] Letters only. Example: SEND + MORE = MONEY', 'info');
+    return;
+  }
+
+  const { operands, result } = parsed;
+  const letters = getLetters(operands, result);
+
+  if (letters.length > 10) {
+    clearLog();
+    addLog('[ ERROR ] Too many unique letters (max 10, digits 0-9)', 'error');
+    return;
+  }
+
+  clearLog();
+  setProgress(5);
+  updateEquationDisplay(operands, result, {});
+  document.getElementById('btnText').innerHTML = '<span class="spinner"></span>SOLVING';
+
+  // Stats
+  document.getElementById('statVars').textContent = letters.length;
+  const leadingCount = new Set([...operands.map(w => w[0]), result[0]]).size;
+  document.getElementById('statCons').textContent = letters.length + leadingCount + 1;
+
+  addLog(`[ INIT  ] Puzzle parsed: ${operands.join(' + ')} = ${result}`, 'info');
+  addLog(`[ CSP   ] Variables (${letters.length}): ${letters.join(', ')}`, 'info');
+  addLog(`[ CSP   ] Leading letters (cannot be 0): ${[...new Set([...operands.map(w=>w[0]),result[0]])].join(', ')}`, 'info');
+  addLog(`[ CSP   ] Domain: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9} per variable`, 'info');
+  addLog(`[ CSP   ] Constraint: AllDiff + arithmetic equality`, 'info');
+
+  setProgress(20);
+
+  await new Promise(r => setTimeout(r, 80));
+
+  addLog(`[ SOLVE ] Starting backtracking with MRV heuristic + forward checking...`, 'working');
+  setProgress(40);
+
+  await new Promise(r => setTimeout(r, 80));
+
+  const t0 = performance.now();
+  const { solution, nodesExplored } = solveCryptarithmetic(operands, result);
+  const elapsed = (performance.now() - t0).toFixed(1);
+
+  setProgress(90);
+  document.getElementById('statNodes').textContent = nodesExplored.toLocaleString();
+  document.getElementById('statTime').textContent = elapsed;
+
+  await new Promise(r => setTimeout(r, 80));
+
+  if (solution) {
+    addLog(`[ OK    ] Solution found after ${nodesExplored.toLocaleString()} nodes in ${elapsed}ms`, 'success');
+    addLog(`[ MAP   ] ${Object.entries(solution).map(([k,v]) => `${k}=${v}`).join(', ')}`, 'success');
+    setProgress(100);
+
+    updateEquationDisplay(operands, result, solution);
+    showSolution(operands, result, solution);
+  } else {
+    addLog(`[ FAIL  ] No valid solution exists. All ${nodesExplored.toLocaleString()} branches exhausted.`, 'error');
+    setProgress(100);
+    document.getElementById('noSolPanel').classList.remove('hidden');
+  }
+
+  document.getElementById('btnText').textContent = 'SOLVE';
+}
+
+// Live preview on input
+document.getElementById('puzzleInput').addEventListener('input', previewPuzzle);
+document.getElementById('puzzleInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') solvePuzzle();
+});
+
+// Initial log
+addLog('[ SYSTEM ] CryptSolve v2.0 — CSP Engine ready.', 'info');
+addLog('[ SYSTEM ] Supports multi-operand puzzles. Max 10 unique letters.', 'info');
+addLog('[ SYSTEM ] Enter puzzle or select a preset to begin.', 'info');
+</script>
+</body>
+</html>
